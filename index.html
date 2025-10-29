@@ -25,7 +25,7 @@ export default function App() {
   const totalAllocated = topics.reduce((a, t) => a + t.time, 0);
   const remaining = duration - totalAllocated;
 
-  // ---- Meeting Timer Logic ----
+  // ---- Meeting Timer Logic (Real Time: 1 minute = 1 minute) ----
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = setInterval(() => {
@@ -37,7 +37,7 @@ export default function App() {
           }
           return prev + 1;
         });
-      }, 1000); // 1 minute = 1 second for demo speed
+      }, 60_000); // ⏱️ 1 real minute = 1 agenda minute
     }
     return () => clearInterval(timerRef.current!);
   }, [isPlaying]);
@@ -48,7 +48,7 @@ export default function App() {
     setIsPlaying(false);
   };
 
-  // ---- DnD Reorder ----
+  // ---- Drag and Drop ----
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
     const reordered = Array.from(topics);
@@ -57,7 +57,7 @@ export default function App() {
     setTopics(reordered);
   };
 
-  // ---- Topic Actions ----
+  // ---- Topic Controls ----
   const handleRenameTopic = (id: string, newName: string) => {
     setTopics((prev) =>
       prev.map((t) => (t.id === id ? { ...t, name: newName } : t))
@@ -235,7 +235,7 @@ export default function App() {
               height: "2px",
               background: "red",
               zIndex: 2,
-              transition: "top 1s linear",
+              transition: "top 60s linear", // smooth movement per minute
             }}
           ></div>
 
