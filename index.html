@@ -19,32 +19,51 @@ export default function App() {
   ]);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const totalAllocated = topics.reduce((a, t) => a + t.time, 0);
   const remaining = duration - totalAllocated;
 
-  // ---- Meeting Timer Logic (Real Time: 1 minute = 1 minute) ----
+  // ---- Local Storage Persistence ----
+  useEffect(() => {
+    const savedData = localStorage.getItem("agendaData");
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setMeetingName(parsed.meetingName || "Meeting Agenda Planner");
+      setDuration(parsed.duration || 60);
+      setTopics(parsed.topics || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "agendaData",
+      JSON.stringify({ meetingName, duration, topics })
+    );
+  }, [meetingName, duration, topics]);
+
+  // ---- Real-time Timer Logic (visible smooth line) ----
   useEffect(() => {
     if (isPlaying) {
+      const startTime = Date.now() - elapsedSeconds * 1000;
       timerRef.current = setInterval(() => {
-        setElapsedMinutes((prev) => {
-          if (prev >= duration) {
-            clearInterval(timerRef.current!);
-            setIsPlaying(false);
-            return duration;
-          }
-          return prev + 1;
-        });
-      }, 60_000); // ⏱️ 1 real minute = 1 agenda minute
+        const secondsPassed = Math.floor((Date.now() - startTime) / 1000);
+        if (secondsPassed >= duration * 60) {
+          clearInterval(timerRef.current!);
+          setIsPlaying(false);
+          setElapsedSeconds(duration * 60);
+        } else {
+          setElapsedSeconds(secondsPassed);
+        }
+      }, 1000);
     }
     return () => clearInterval(timerRef.current!);
   }, [isPlaying]);
 
   const handlePlayPause = () => setIsPlaying((p) => !p);
   const handleRestart = () => {
-    setElapsedMinutes(0);
+    setElapsedSeconds(0);
     setIsPlaying(false);
   };
 
@@ -81,7 +100,7 @@ export default function App() {
       {
         id: newId,
         name: "New Section",
-        time: 10,
+        time: 1,
         color: colors[Math.floor(Math.random() * colors.length)],
       },
     ]);
@@ -90,7 +109,7 @@ export default function App() {
     setTopics((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const linePosition = (elapsedMinutes / duration) * 100;
+  const linePosition = (elapsedSeconds / (duration * 60)) * 100;
 
   return (
     <div
@@ -132,7 +151,7 @@ export default function App() {
           }}
         />
 
-        {/* Meeting Duration & Controls */}
+        {/* Meeting Duration & Info */}
         <div style={{ marginBottom: 10, textAlign: "center" }}>
           <label>Duration (minutes): </label>
           <input
@@ -225,7 +244,7 @@ export default function App() {
             background: "#1c1c1c",
           }}
         >
-          {/* Moving line */}
+          {/* Moving red line with white outline */}
           <div
             style={{
               position: "absolute",
@@ -234,8 +253,10 @@ export default function App() {
               width: "100%",
               height: "2px",
               background: "red",
+              boxShadow:
+                "0 0 6px 2px white, 0 0 10px 4px rgba(255,255,255,0.6)",
               zIndex: 2,
-              transition: "top 60s linear", // smooth movement per minute
+              transition: "top 1s linear",
             }}
           ></div>
 
@@ -309,10 +330,10 @@ export default function App() {
                             />
                             <input
                               type="range"
-                              min="5"
+                              min="1"
                               max={duration}
                               value={topic.time}
-                              step="5"
+                              step="1"
                               onChange={(e) =>
                                 handleTimeChange(topic.id, e.target.value)
                               }
